@@ -1,0 +1,12 @@
+# Routes
+# This file defines all application routes (Higher priority routes first)
+# https://www.playframework.com/documentation/latest/ScalaRouting
+# ~~~~
+
+# Une route pour génerer de Json instances.
+POST     /                           controllers.HomeController.generate()
+#  Une route pour renvoyer le Schema canonisé
+POST    /renvoieSchemaCanoniser                            controllers.HomeController.renvoieSchemaCanoniser()
+
+# Map static resources from the /public folder to the /assets URL path
+GET     /assets/*file               controllers.Assets.versioned(path="/public", file: Asset)
