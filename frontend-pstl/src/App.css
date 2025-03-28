@@ -1,0 +1,66 @@
+@import "tailwindcss";
+:root{
+    height: 100%;
+    width: 100%;
+    background-image: radial-gradient(circle at 50% 50%, #38389B 0%, #161634 70%);
+}
+.item{
+    width: 90%;
+}
+.parent:hover{
+   background-color: white;
+   transform: scale(1.05);
+   transition: all 0.3s;
+   cursor: pointer;
+}
+.parent:hover .child{
+    color:#A2A3FF;
+    transition: all 0.3s;
+}
+.parent:hover img {
+    filter: invert(35%) sepia(30%) saturate(600%) hue-rotate(200deg) brightness(100%) contrast(95%);
+  }
+.input{
+    box-shadow: 0px -4px 10px rgba(255,255,255,0.3),
+    0px 4px 10px rgba(255,255,255,0.3)
+}
+.monaco-container { 
+    margin-top: 16px;
+    box-shadow: 0px -4px 10px rgba(255,255,255,0.3),
+    0px 4px 10px rgba(255,255,255,0.3);
+  }
+@keyframes rotate30 {
+    0% {
+      top: 0;
+      left: 0px;
+      transform: rotate(0deg);
+    }
+    25% {
+      top: 0;
+      left: calc(100% - 36px);
+      transform: rotate(360deg);
+    }
+    50% {
+      top: calc(100% - 36px);
+      left: calc(100% - 36px);
+      transform: rotate(0deg);
+    }
+    75% {
+      top: calc(100% - 36px);
+      left: 0;
+      transform: rotate(360deg);
+    }
+    100% {
+      top: 0;
+      left: 0;
+      transform: rotate(0deg);
+    }
+  }
+  
+.slow-rotate {
+    position: absolute;  /* Important pour utiliser top, left, right, bottom */
+    width: 30px;  /* La taille de ton élément */
+    height: 30px;  /* La taille de ton élément */
+    background-color: #A2A3FF;  /* La couleur de ton élément */
+    animation: rotate30 20s linear infinite;
+  }

@@ -1,0 +1,92 @@
+.drop{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 240px;
+    padding: 8px;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 0px -4px 10px rgba(255,255,255,0.3),
+    0px 4px 10px rgba(255,255,255,0.3);
+}
+.icone{
+    font-size: 12px;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #898AD8;
+    padding: 4px;
+    border-radius: 50%;
+    transition: all 0.3s ease-in-out;
+}
+.rotate {
+    transform: rotate(-180deg);
+    transition: transform 0.3s ease-in-out; 
+}
+.list{
+    position: absolute;
+    box-shadow: 0px -4px 10px rgba(255,255,255,0.3),
+    0px 4px 10px rgba(255,255,255,0.3);
+    left: 0px;
+    width: 100%;
+    background-color: rgba(22, 22, 52, 1);
+    border-radius: 10px;
+    overflow: hidden;
+    color:#6a7282;
+    transition: all 0.3s;
+}
+.list::-webkit-scrollbar {
+    width: 6px; /* Largeur de la barre de défilement */
+  }
+  
+  .list::-webkit-scrollbar-track {
+    background: transparent; /* Couleur de fond de la piste de défilement */
+  }
+  
+  .list::-webkit-scrollbar-thumb {
+    background: #888; /* Couleur de la poignée de défilement */
+    border-radius: 5px; /* Bordure arrondie de la poignée */
+  }
+.list li:hover{
+   
+    transform: scale(1.05);
+    transition: all 0.3s;
+    
+}
+.list li{
+    padding: 12px;
+}
+.pages{
+    margin-left: 8px;
+    border-radius: 50%;
+    padding: 4px 12px;
+    color: #898AD8;
+    border: 1px solid #898AD8;
+}
+.pages:hover{
+    cursor: pointer;
+    transform: scale(1.1);
+    background-color: #898AD8;
+    color: white;
+    transition: all 0.3s ease-in-out;
+}
+/* Personnalisation de la scrollbar */
+.input::-webkit-scrollbar {
+    width: 8px; /* Largeur */
+  }
+  
+  .input::-webkit-scrollbar-track {
+    background: #1E293B; /* Couleur du track */
+    border-radius: 10px;
+  }
+  
+  .input::-webkit-scrollbar-thumb {
+    background: #888; /* Couleur du handle */
+    border-radius: 10px;
+  }
+  
+  .input::-webkit-scrollbar-thumb:hover {
+    background: #555;
+  }
+  
