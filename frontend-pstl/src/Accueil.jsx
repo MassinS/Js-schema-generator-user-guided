@@ -6,7 +6,7 @@ function Accueil() {
     const [naviguer, setNaviguer] = useState(false);
     return(
         <>
-        {naviguer?<Navigate to="/generation"  replace={true} />:null}
+        {naviguer?<Navigate to="/test2"  replace={true} />:null}
         <div className='flex flex-col h-screen w-full'>
               <header className='flex h-1/6 py-3 justify-between items-center'>
               <div className='flex ml-16 mb-3 h-[48px]  items-center'>

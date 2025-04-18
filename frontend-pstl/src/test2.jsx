@@ -3,6 +3,7 @@ import brackets from './assets/mdi_code-json.svg'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faArrowRightFromBracket } from '@fortawesome/free-solid-svg-icons'
 import { faAngleDown } from '@fortawesome/free-solid-svg-icons'
+import { faX } from '@fortawesome/free-solid-svg-icons'
 import  {useState,useEffect } from 'react';
 import { Navigate } from "react-router";
 import './App.css'
@@ -10,7 +11,10 @@ import './main.css'
 import Editor from '@monaco-editor/react';
 import axios from "axios";
 import toast from 'react-hot-toast'
-function Test(){
+import Ajv from 'ajv'
+import Ajv2019 from "ajv/dist/2019";
+import Ajv2020 from "ajv/dist/2020";
+function Test2(){
     const [naviguer, setNaviguer] = useState(false);
     const [nbr_instance, setNbr] = useState(1);
     const[response,setResponse] =useState({ instances: [] });
@@ -36,9 +40,6 @@ function Test(){
       schema:Schema,
       count:nbr_instance
     };
-    useEffect(() => {
-      console.log(response1);
-    });
 
     const handleEditorDidMount = (editor, monaco) => {
         monaco.editor.defineTheme("myCustomTheme", {
@@ -63,28 +64,40 @@ function Test(){
         });
         monaco.editor.setTheme("myCustomTheme");
       };
+    /*useEffect(() => {
+        console.log(JSON.stringify(response1,null,2));
+      },[response1]);*/
 
-      const validateSchema = (schema, path, instance) => {
-        let currentSchema = schema;
-      
-        // Descente dans le schéma en suivant le chemin
-        for (const key of path) {
-            if (!currentSchema || typeof currentSchema !== "object") return;
-            currentSchema = currentSchema[key]; // Aller plus profondément dans le schéma
-        }
-    
-        if (!currentSchema || !currentSchema.type) return; // Si on arrive à une fin invalide, on sort
-    
-        const expectedType = currentSchema.type.toLowerCase();
-        const actualType = Array.isArray(instance) ? "array" : typeof instance;
-    
-        if (expectedType !== actualType) {
-            // Ajouter une propriété correspondance avec l'erreur
-            currentSchema.correspondance = `Erreur : Attendu "${expectedType}", mais reçu "${actualType}".`;
-        } else {
-            delete currentSchema.correspondance; // Supprime l'erreur si tout est correct
-        }
-    };
+useEffect(() => {
+  const schema = All.instances;
+  const instance = schema.Branche1?.[0] || schema.anyof?.[0]?.Branche1;
+  if (!instance) return;
+
+  // On détecte le draft à partir de $schema
+  const schemaVersion = Schema?.$schema || "http://json-schema.org/draft-07/schema#";
+  let ajv;
+  if (schemaVersion.includes("2020")) {
+    ajv = new Ajv2020({ allErrors: true });
+  } else if (schemaVersion.includes("2019")) {
+    ajv = new Ajv2019({ allErrors: true });
+  } else {
+    ajv = new Ajv({ allErrors: true }); // Draft 7 par défaut
+  }
+
+  try {
+    const validate = ajv.compile(Schema);
+    const valid = validate(instance);
+
+    if (!valid) {
+      console.log("Erreurs de validation :", validate.errors);
+    } else {
+      console.log("Instance valide !");
+    }
+  } catch (e) {
+    console.error("Erreur de compilation du schéma :", e);
+  }
+}, [All]);
+   
     
 
 
@@ -102,80 +115,137 @@ function Test(){
           cursor: 'pointer',
         };
       };
-    //fonction qui sera utile pour conditionner l'affichage d'input (nombre d'instance)
-      const hasSelectedChild = (schema) => {
-        return Object.values(schema).some(child => 
-            typeof child === "object" && child.selected
-        );
-    };
+   
 
-      const renderSchema = (schema, key = "root", parentSelected, indent, path ) => {
-        if (!schema || typeof schema !== "object") return null; // s'il s'agit pas d'un objet on affiche pas
-    
-        const currentPath = [...path, key]; // ajouter la cle actuel
-        //const estFeuille = Object.keys(schema).every(subKey => ["type", "selected", "instances"].includes(subKey));
-    
-        return (
-            <div key={key} className="ml-4 mt-2" style={{ marginLeft: `${indent * 20}px` }}>
-                {/* Toujours afficher la case pour la racine */}
-                <div className="flex items-center">
-                    {(indent === 0 || parentSelected) && ( // Afficher la racine ou si le parent est coché
-                        <input
-                            type="checkbox"
-                            className="mr-2"
-                            checked={schema.selected || false}
-                            onChange={() => {
-                              handlecheck(key, currentPath);
-                            }}
-                        />
-                    )}
-                    <strong>{key} :</strong>
-                    <span className="text-blue-400">{" {"}</span>
+const renderSchema = (schema, key = "root", parentSelected, indent, path) => {
+  if (!schema || typeof schema !== "object") return null;
+
+  const currentPath = key.startsWith("Branche") && path.length > 0
+  ? path // ici je garde path car j'affiche juste le nom de la branche mais moi je manipule des indices
+  : [...path, key]; // dans d'autre cas oui on descent
+
+  // Fonction pour vérifier si un enfant a la propriété selected et il descend dans le cas d'un anyOf
+  const hasSelectedChild = (schema) => {
+    return Object.values(schema).some((child) => {
+      if (typeof child !== "object" || child === null) return false;
+  
+      // cas normal
+      if (child.selected) return true;
+  
+      // cas special, si c'est un anyOf, on descend dans les enfants
+      if (Array.isArray(child)) {
+        return child.some(
+          (sub) => typeof sub === "object" && sub !== null && sub.selected
+        );
+      }
+  
+      return false;
+    });
+  };
+  
+
+  return (
+    <div key={key} className="ml-2 mt-2" style={{ marginLeft: `${indent * 8}px` }}>
+      <div className="flex items-center">
+        {(indent === 0 || parentSelected) && (
+          <input
+            type="checkbox"
+            className="mr-2"
+            checked={schema.selected || false}
+            onChange={() => {
+              handlecheck(key, currentPath);
+            }}
+          />
+        )}
+        <strong>{key} :</strong>
+        <span className="text[#A2A3FF]">{" {"}</span>
+      </div>
+
+      {!hasSelectedChild(schema) && schema.selected && (
+        <div className="mt-2">
+          <input
+            type="text"
+            className="bg-gray-700 rounded-full text-white text-center border border-gray-500 px-2 py-1 w-24"
+            value={schema.instances || 1}
+            onChange={(e) => handleNombre(key, currentPath, Number(e.target.value))}
+          />
+        </div>
+      )}
+
+      {Object.entries(schema).map(([subKey, subValue]) => {
+  
+        // Traitement spécial pour anyOf
+        if (Array.isArray(subValue) && subKey === "anyOf") {
+          return (
+            <div key={subKey} className="ml-4">
+              <strong className="text-[#A2A3FF]">
+                anyOf:
+              </strong>
+              {subValue.map((option, index) => (
+                <div key={index} className="ml-4">
+                  {renderSchema(
+                    option,
+                    `Branche${index + 1}`, 
+                    schema.selected, 
+                    indent + 2,
+                    [...currentPath, "anyOf", index] 
+                  )}
                 </div>
-    
-                {/* Affichage du type si présent */}
-                {schema.type && (
-                    <div className="ml-6 text-blue-400">type: {schema.type}</div>
-                )}
-    
-                {/* Si c'est une feuille et sélectionnée, ajouter un input pour saisir le nombre d'instancer a generer */}
-                {!hasSelectedChild(schema) && schema.selected && (
-                    <div className="ml-6 mt-2">
-                        <input
-                            type="text"
-                            className="bg-gray-700 rounded-full text-white text-center border border-gray-500 px-2 py-1 w-24"
-                            value={schema.instances || 1}
-                            onChange={(e) => handleNombre(key, currentPath, Number(e.target.value))}
-                        />
-                    </div>
-                )}
-    
-                {/* Affichage des sous-éléments */}
-                <div className="ml-6 mt-2">
-                    {Object.entries(schema)
-                        .filter(([subKey]) => !["type", "selected", "instances"].includes(subKey)) // Exclure "type", "selected" et "instances"
-                        .map(([subKey, subSchema]) => (
-                            <div key={subKey}>
-                                {/* Propagation de parentSelected, sauf pour la racine */}
-                                {renderSchema(subSchema, subKey, schema.selected, indent + 1, currentPath)}
-                            </div>
-                        ))}
-                </div>
-    
-                {/* fermer l'objet */}
-                <div className="text-white p-2 rounded bg-gray-800">
-                    <span className="text-blue-400">{" }"}</span>
-                </div>
+              ))}
             </div>
+          );
+        }
+        if (["selected", "instances"].includes(subKey)) {
+          return null;
+        }
+        
+
+        return (
+          <div key={subKey} className="ml-4">
+            {(typeof subValue !== "object" || Array.isArray(subValue)) &&
+            !(subKey === "type" && subValue === undefined) ? (
+              <strong>{subKey}:</strong>
+            ) : null}
+
+            {Array.isArray(subValue) ? (
+              <pre className="text-[#A2A3FF]">
+                {JSON.stringify(
+                  subValue.map((item) =>
+                    typeof item === "object" && !Array.isArray(item) && item !== null
+                      ? Object.fromEntries(
+                          Object.entries(item).filter(([k]) => !["selected", "instances"].includes(k))
+                        )
+                      : item
+                  ),
+                  null,
+                  2
+                )}
+              </pre>
+            ) : typeof subValue === "object" ? (
+              <div className="ml-4">
+                {renderSchema(subValue, subKey, schema.selected, indent + 1, currentPath)}
+              </div>
+            ) : (
+              <span className="text[#A2A3FF]"> {subValue}</span>
+            )}
+          </div>
         );
-    };
-    
+      })}
 
+      <div className="p-2 rounded bg-gray-800">
+        <span className="text[#A2A3FF]">{" }"}</span>
+        {schema.correspondance && (
+          <div className="text-red-500">
+            <FontAwesomeIcon icon={faX} className="mr-1" />
+            {schema.correspondance}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
-    
-      
-      
-      
+ 
       const handlecheck = (key, path = []) => {
         setResponse1((prevState) => {
           if (!prevState.Branches) {
@@ -186,70 +256,66 @@ function Test(){
           // Copie de l'objet Branches
           const updatedBranches = { ...prevState.Branches };
       
-          // Fonction récursive pour accéder à une propriete spécifique
+          // fonction récursive pour accéder à une propriete spécifique
           const updateSelection = (obj, path) => {
-            if (path.length === 0) return obj; // si le chemin est vide, on retourne l'objet tel quel
-      
+            if (path.length === 0) return obj;
+          
             const [currentKey, ...restPath] = path;
-            const updatedObj = { ...obj }; // on clone l'objet a chaque niveau
-      
-            // si l'objet actuel contient la cle, on descend dans l'arbre
-            if (updatedObj[currentKey]) {
+            const updatedObj = Array.isArray(obj) ? [...obj] : { ...obj }; //
+          
+            if (updatedObj[currentKey] !== undefined) {
               if (restPath.length === 0) {
-                // on est arrive au niveau ou on veut changer la selection
-                // creation d'un nouvel objet pour mettre à jour 'selected'
+                // mettre a jour le selected de la cle cible
                 updatedObj[currentKey] = {
                   ...updatedObj[currentKey],
-                  selected: !(updatedObj[currentKey].selected), // Change l'état 'selected'
+                  selected: !updatedObj[currentKey].selected,
                 };
               } else {
-                // On continue a descendre dans l'arbre
+                //descendre recursivement
                 updatedObj[currentKey] = updateSelection(updatedObj[currentKey], restPath);
               }
             }
-    
+          
             return updatedObj;
           };
-      
-          // Utilisation de la fonction récursive pour mettre à jour la sélection avec le chemin complet
+          
+          // utilisation de la fonction recursive pour mettre à jour la sélection avec le chemin complet
           const updatedObj = updateSelection(updatedBranches, path);
-          // Remise à jour de l'état
-          return { Branches: updatedObj }; // Retourne l'état mis à jour
+          // remise à jour de l'etat
+          return { Branches: updatedObj }; 
         });
       };
 
+      const updateInstances = (obj, path,value) => {
+        if (path.length === 0) return obj;
+      
+        const [currentKey, ...restPath] = path;
+        const updatedObj = Array.isArray(obj) ? [...obj] : { ...obj };
+      
+        if (updatedObj[currentKey] !== undefined) {
+          if (restPath.length === 0) {
+            updatedObj[currentKey] = {
+              ...updatedObj[currentKey],
+              instances: value,
+            };
+            console.log(updatedObj[currentKey]);
+          } else {
+            updatedObj[currentKey] = updateInstances(updatedObj[currentKey], restPath,value);
+          }
+        }
+      
+        return updatedObj;
+      };
       const handleNombre = (key, path, value) => {
         setResponse1((prevState) => {
-            if (!prevState.Branches) return prevState;
-    
-            // Copie profonde de l'objet Branches pour éviter la mutation
-            const updatedBranches = { ...prevState.Branches };
-    
-            // Fonction récursive pour mettre à jour instances
-            const updateInstances = (obj, path) => {
-                if (path.length === 0) return obj;
-    
-                const [currentKey, ...restPath] = path;
-                const updatedObj = { ...obj };
-    
-                if (updatedObj[currentKey]) {
-                    if (restPath.length === 0) {
-                        // Mise à jour du nombre d'instances pour la clé cible
-                        updatedObj[currentKey].instances = value;
-                    } else {
-                        // Mise à jour récursive
-                        updatedObj[currentKey] = updateInstances(updatedObj[currentKey], restPath);
-                    }
-                }
-    
-                return updatedObj;
-            };
-    
-            // appliquer la mise à jour de l'instance
-            const newBranches = updateInstances(updatedBranches, path);
-            return { Branches: newBranches };
+          if (!prevState.Branches) return prevState;
+      
+          const updatedBranches = updateInstances(prevState.Branches, path,value);
+          console.log(value);
+          return { Branches: updatedBranches };
         });
-    };
+      };
+      
     
       
 
@@ -261,41 +327,55 @@ function Test(){
             setLoading(true);
             axios.post("http://localhost:9000/renvoieSchemaCanoniser", personnes)
               .then((respo) => {
-                console.log(respo.data);
-                const processBranch = (branch, index = 1) => {
-                  // Créer l'objet de base avec type, selected et instances
-                  const processedBranch = {
-                    type: branch.type,
-                    selected: false,
-                    instances: 0,
-                  };
                 
-                  // Si la branche a des `patternProperties`, on les transforme en un tableau de types
-                  if (branch.patternProperties) {
-                    Object.entries(branch.patternProperties).forEach(([key, value]) => {
-                      processedBranch[key] = processBranch(value); // Appel récursif pour chaque sous-schéma
+                const processBranch = (branch, index = 1, isRootAnyOf = false) => {
+                  if (typeof branch !== "object" || branch === null) return branch;
+                
+                  const processedBranch = Array.isArray(branch) ? [...branch] : { ...branch };
+                
+                  processedBranch.selected = false;
+                  processedBranch.instances = 0;
+                
+                  // Si la racine est un anyof ,diviser en plusieurs branches
+                  if (isRootAnyOf && Array.isArray(branch)) {
+                    const branches = {};
+                    branch.forEach((subSchema, idx) => {
+                      branches[`Branche${idx + 1}`] = processBranch(subSchema, idx + 1);
                     });
+                    return branches;
                   }
                 
-                  // Si la branche a un `anyOf`, on remplace `anyOf` par un objet avec des clés "BrancheX"
-                  if (branch.anyOf) {
-                    const formattedBranches = {};
-                    branch.anyOf.forEach((subSchema, idx) => {
-                      formattedBranches[`Branche${idx + 1}`] = processBranch(subSchema, idx + 1);
-                    });
-                    return formattedBranches; // Retourne un objet avec les clés "BrancheX"
+                  // si c'est un anyOf à l'interieur (pas la racine), on le laisse tel quel
+                  if (Array.isArray(processedBranch.anyOf)) {
+                    processedBranch.anyOf = processedBranch.anyOf.map((subSchema) =>
+                      processBranch(subSchema)
+                    );
                   }
-
-                  
                 
-                  // Retourne l'objet traité
+                  // traitement recursif des autres proprietes
+                  for (const key in processedBranch) {
+                    if (
+                      key !== "anyOf" &&
+                      typeof processedBranch[key] === "object" &&
+                      processedBranch[key] !== null
+                    ) {
+                      processedBranch[key] = processBranch(processedBranch[key]);
+                    }
+                  }
+                
                   return processedBranch;
                 };
+                
+                
+                
                 if (respo.data.anyOf) {
-                  obj.Branches = processBranch(respo.data); // Transforme anyOf en objet avec clés nommées
+                  obj.Branches = {};
+                  respo.data.anyOf.forEach((branch, index) => {
+                    obj.Branches[`branch${index + 1}`] = processBranch(branch);
+                  });
                 } else {
-                  obj.Branches["Branche1"] = processBranch(respo.data); // Si un seul schéma, on l'appelle "Branche1"
-                }                      
+                  obj.Branches["Branche1"] = processBranch(respo.data);
+                }                    
           setAppuyer1(true);
           setResponse1(obj);
           handleClick(0);
@@ -305,7 +385,7 @@ function Test(){
           );
           
         } else {
-          setLoading(true); // Activation du loading
+          setLoading(true); // activer le chargement
 
           const cartesianProduct = (...arrays) => {
             const result = [];
@@ -319,13 +399,13 @@ function Test(){
               for (let i = 0; i < arrays[index].length; i++) {
                 const currentObject = arrays[index][i];
           
-                // Ajouter chaque clé et sa valeur à la combinaison
+                // ajouter chaque cle et sa valeur a la combinaison
                 Object.keys(currentObject).forEach(key => {
                   current[key] = currentObject[key];
           
                   recursiveCombine(arrays, index + 1, current);
           
-                  delete current[key]; // Backtracking
+                  delete current[key]; // supprimer la cle pour la prochaine itération
                 });
               }
             };
@@ -335,51 +415,76 @@ function Test(){
             return result;
           };
 
-const processSchema = async (branche, path = []) => {
-  if (!branche || !branche.selected) return null;
+          const processSchema = async (branche, path, Key) => {
+            if (!branche || !branche.selected) return null;
+          
+            if (branche.type && branche.type !== "object") {
+              // generation normal
+              return axios.post("http://localhost:9000/", { schema: branche, count: branche.instances || 1 })
+                .then(res => {
+                  const Schema_type = res.data;
+                  const generatorType = Object.keys(Schema_type)[0];
+                  const generatedInstances = Schema_type[generatorType]?.Instances || [];
+                  if (generatedInstances.length > 0) {
+                    return generatedInstances;
+                  } else {
+                    toast.error(Key + " est insatisfiable");
+                  }
+                })
+                .catch(err => {
+                  console.error("Erreur lors de la génération :", err);
+                  return [];
+                });
+            }
+          
+            let sousSchemas = {};
+          
+            // traitement special de anyOf
+            if (Array.isArray(branche.anyOf)) {
+              const options = await Promise.all(
+                branche.anyOf.map((subSchema, idx) =>
+                  processSchema(subSchema, [...path, "anyOf", idx], `${Key} (Branche${idx + 1})`)
+                )
+              );
+          
+              // On garde seulement les resultats valides
+              sousSchemas["anyOf"] = options.filter(opt => opt !== null);
+            }
+          
+            await Promise.all(
+              Object.entries(branche).map(async ([key, value]) => {
+                if (["type", "selected", "instances", "anyOf"].includes(key)) return;
+            
+                if (key === "patternProperties") {
+                  //cas special pour patternProperties
+                  await Promise.all(
+                    Object.entries(value).map(async ([patternKey, patternValue]) => {
+                      const processed = await processSchema(patternValue, [...path, patternKey], Key);
+                      if (processed) sousSchemas[patternKey] = processed;
+                    })
+                  );
+                } else {
+                  const processed = await processSchema(value, [...path, key], Key);
+                  if (processed) sousSchemas[key] = processed;
+                }
+              })
+            );
+            
+          
+            return sousSchemas;
+          };
+          
 
-  // Cas d'un type simple : Génération d'instances
-  if (branche.type && branche.type !== "object") {
-    return axios.post("http://localhost:9000/", { schema: branche, count: branche.instances || 1 })
-      .then(res => {
-        const Schema_type = res.data;
-        const generatorType = Object.keys(Schema_type)[0];
-        const generatedInstances = Schema_type[generatorType]?.Instances || [];
-
-        console.log("generatedInstances"+generatedInstances+" avec son path "+path);
-
-        return generatedInstances;
-      })
-      .catch(err => {
-        console.error("Erreur lors de la génération :", err);
-        branche.correspondance = "Erreur serveur lors de la génération.";
-        return [];
-      });
-  }
-
-  let sousSchemas = {};
-
-  // Descente récursive dans les sous-branches
-  await Promise.all(Object.entries(branche).map(async ([key, value]) => {
-    if (["type", "selected", "instances"].includes(key)) return;
-
-    const processed = await processSchema(value, [...path, key]); // Passer le chemin
-    if (processed) sousSchemas[key] = processed;
-  }));
-
-  return sousSchemas;
-};
 
 
-
-// Fonction principale qui déclenche la génération
+// fonction principale qui declenche la generation
 const generateInstances = async () => {
   let allInstances = {};
   await Promise.all(
     Object.entries(response1.Branches).map(async ([key, branche]) => {
-      const processedInstances = await processSchema(branche);
+      const processedInstances = await processSchema(branche,[],key);
       if (processedInstances) {
-        allInstances[key] = processedInstances; // stocker les instances dans la branche qui correspond(branche 1|2|3 ....)
+        allInstances[key] = processedInstances; // stocker les instances generes
       }
     })
   );
@@ -397,9 +502,15 @@ const generateInstances = async () => {
       let instancesArray = [];
   
       if (Array.isArray(value)) {
-        instancesArray = value.map((instance) => ({ [key]: applatir(instance) }));
+        // si chaque element est un objet, on retourne chaque objet individuellement
+        instancesArray = value.map((instance) => {
+          const flat = applatir(instance);
+          return Array.isArray(flat)
+            ? flat.map(f => ({ [key]: f }))
+            : [{ [key]: flat }];
+        }).flat();
       } else if (typeof value === "object" && value !== null) {
-        // Traiter les propriétés imbriquées de manière séparée
+        // traiter les proprietes imbriquées de manière separe
         const transformedChildren = transformInstancesForCartesian(value);
     
         instancesArray = transformedChildren.flatMap((childInstance) => {
@@ -415,7 +526,7 @@ const generateInstances = async () => {
       }
     });
   
-    // Si des propriétés ont été trouvées, on génère le produit cartésien
+    // si des proprietes ont ete trouves, on genere le produit cartesien
     if (allProps.length > 0) {
       result = cartesianProduct(...allProps);
       result = Array.from(new Set(result.map(JSON.stringify))).map(JSON.parse); // Suppression finale des doublons
@@ -426,39 +537,41 @@ const generateInstances = async () => {
 
 
   const applatir = (obj) => {
-  if (typeof obj !== "object" || obj === null) {
-    return obj; // Si c'est un type primitif, on le retourne directement
-  }
-
-  if (Array.isArray(obj)) {
-    return obj.map(applatir).filter(item => item !== undefined); // Aplatir et retirer les undefined
-  }
-
-  let newObj = []; // Tableau de schémas
-
-  Object.entries(obj).forEach(([key, value]) => {
-    let flatValue = applatir(value); // Aplatir récursivement
-
-    if (Array.isArray(flatValue)) {
-      // Si la valeur aplatie est un tableau, on ajoute chaque élément séparément
-      flatValue.forEach(item =>{ 
-        if (key.toLowerCase().includes("branche")) {
-          newObj.push(item)
-        }else{
-          newObj.push({ [key]: item })
-        }
-        });
-    } else {
-      if (key.toLowerCase().includes("branche")) {
-        newObj.push(flatValue );
-      }else{
-        newObj.push({ [key]: flatValue });
-      }
+    if (typeof obj !== "object" || obj === null) {
+      return obj; // Type primitif
     }
-  });
-
-  return newObj;
-};
+  
+    if (Array.isArray(obj)) {
+      return obj.map(applatir).filter(item => item !== undefined);
+    }
+  
+    let newObj = [];
+  
+    Object.entries(obj).forEach(([key, value]) => {
+      let flatValue = applatir(value);
+      // enlever  les cle anyof branche patternproperties pour forme l'instance sans les cles nni inutiles
+      if (key.toLowerCase() === "anyof" || /^Branche\d+$/i.test(key) || key.toLowerCase() === "patternproperties") {
+        if (Array.isArray(flatValue)) {
+          flatValue.forEach(item => {
+            newObj.push(item); // injecter directement
+          });
+        } else {
+          newObj.push(flatValue);
+        }
+      } else {
+        if (Array.isArray(flatValue)) {
+          flatValue.forEach(item => {
+            newObj.push({ [key]: item });
+          });
+        } else {
+          newObj.push({ [key]: flatValue });
+        }
+      }
+    });
+  
+    return newObj;
+  };
+  
   
 
 
@@ -477,7 +590,7 @@ const generateInstances = async () => {
   });
   setLoading(false);
 };
- generateInstances();
+generateInstances();
         }
       };
   
@@ -589,9 +702,7 @@ const generateInstances = async () => {
     Object.keys(response.instances).length>0 ? (
       <div>
         {
-          // Créer un objet à partir des instances
           (() => {
-            // Affichage de l'objet JSON
             return (
               <pre>{JSON.stringify(response, null, 2)}</pre>
             );
@@ -610,43 +721,27 @@ const generateInstances = async () => {
                     onClick={()=>{
                       if(typeof Schema ==='object'){
                         setLoading(true);
-                        axios.post('http://localhost:9000/',personnes).then((respo)=> {
-                           const Schema_type=respo.data;
-                           const objet = { instances: {} };
-                          if("NumberGenerator" in Schema_type){
-                            const a=Schema_type.NumberGenerator.Instances;
-                            a.forEach((instance, index) => {
+                        axios.post('http://localhost:9000/', personnes).then((respo) => {
+                          const Schema_type = respo.data;
+                          const objet = { instances: {} };
+                        
+                          const generatorKey = Object.keys(Schema_type)[0]; //recuperer l'instance de n'importe quel type qui est tjr la premiere
+                          const generatorData = Schema_type[generatorKey];
+                        
+                          if (generatorData?.Instances) {
+                            generatorData.Instances.forEach((instance, index) => {
                               objet.instances[`instance${index + 1}`] = instance;
-                              });
-                            setResponse(objet);
-                          }else if("StringGenerator" in Schema_type){
-                            const a=Schema_type.StringGenerator.Instances;
-                            a.forEach((instance, index) => {
-                              objet.instances[`instance${index + 1}`] = instance;
-                              });
-                            setResponse(objet);
-                          }else if("BooleanGenerator" in Schema_type){
-                            const a=Schema_type.BooleanGenerator.Instances;
-                            a.forEach((instance, index) => {
-                              objet.instances[`instance${index + 1}`] = instance;
-                              });
-                            setResponse(objet);
-                          }else if("SchemaGenerator" in Schema_type){
-                            const a=Schema_type.SchemaGenerator.Instances;
-                            a.forEach((instance, index) => {
-                              objet.instances[`instance${index + 1}`] = instance;
-                              });
+                            });
                             setResponse(objet);
                           }
-                          if("SchemaGenerator" in Schema_type && "Note" in Schema_type.SchemaGenerator){
-                            toast.success(Schema_type.SchemaGenerator.Note);
-                          }else{
-                            toast.success("generation avec succes");
+                        
+                          // Gestion du message de succès
+                          if (generatorKey === "SchemaGenerator" && generatorData.Note) {
+                            toast.success(generatorData.Note);
+                          } else {
+                            toast.success("Génération avec succès");
                           }
-                          
-                          
-                      })
-                  .catch(err=>{
+                        }).catch(err=>{
                     toast.error("Cet Objet ne correspond pas a un Schema JSON");
                   }).finally(()=>{
                     setLoading(false);
@@ -689,11 +784,12 @@ const generateInstances = async () => {
                    }} />:
                    <div className="input h-[416px] px-2 py-2 mt-4 w-xl bg-[#1E293B] text-[#A2A3FF] overflow-auto">
   {Object.keys(response1.Branches).length > 0 ? (
+    
      <div>
       {Object.entries(response1.Branches).map(([key, branche], index) => {
-    if (index >= indexPage && index < Math.min(indexPage + 2, Object.entries(response1.Branches).length)) {
+   // if (index >= indexPage && index < Math.min(indexPage + 2, Object.entries(response1.Branches).length)) {
         return renderSchema(branche, key, true, 0,[]);
-    }
+    //}
 })}
      </div>
     ) : null}
@@ -718,9 +814,8 @@ const generateInstances = async () => {
     Object.keys(All.instances).length>0 ? (
       <div>
         {
-          // Créer un objet à partir des instances
           (() => {
-            // Affichage de l'objet JSON
+            //affichage n les instances
             return (
               <pre>{JSON.stringify(All, null, 2)}</pre>
             );
@@ -761,4 +856,4 @@ const generateInstances = async () => {
         
     )
 }
-export default Test
+export default Test2;
