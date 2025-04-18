@@ -32,7 +32,10 @@ lazy val backendPSTL = (project in file("."))
     mainClass := Some("play.core.server.ProdServerStart"),
     libraryDependencies ++= Seq(
       guice,
-      "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.1" % Test
+      "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.1" % Test,
+      "org.scalaj" %% "scalaj-http" % "2.4.2", 
+      "com.typesafe.play" %% "play-json" % "2.9.4",
+      "com.google.cloud" % "google-cloud-aiplatform" % "3.30.0"
     )
   )
 
