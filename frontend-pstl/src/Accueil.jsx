@@ -6,7 +6,7 @@ function Accueil() {
     const [naviguer, setNaviguer] = useState(false);
     return(
         <>
-        {naviguer?<Navigate to="/test2"  replace={true} />:null}
+        {naviguer?<Navigate to="/generation"  replace={true} />:null}
         <div className='flex flex-col h-screen w-full'>
               <header className='flex h-1/6 py-3 justify-between items-center'>
               <div className='flex ml-16 mb-3 h-[48px]  items-center'>
@@ -14,15 +14,7 @@ function Accueil() {
               <p className='text-3xl text-white pl-4 font-bold'>JSON Schema</p>
               </div>
               <div className='flex mr-12 h-[48px] items-center'>
-                <ul className='flex items-center'>
-                  <li className='pr-6 text-white text-xl'>Home</li>
-                  <li className='pr-6 text-white text-xl'>About Us</li>
-                  <li className='pr-6 text-white text-xl'>courses</li>
-                  <li className='pr-6 text-white text-xl'>Activities</li>
-                  <li className='pr-6 text-white text-xl'>Resources</li>
-                  <li className='pr-6 text-white text-xl'>Parent’s corner</li>
-                  <li className='pr-6 text-white text-xl'>Contact Us</li>
-                </ul>
+                
               </div>
         
               </header>

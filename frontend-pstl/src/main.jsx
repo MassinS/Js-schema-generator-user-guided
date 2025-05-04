@@ -5,8 +5,6 @@ import { BrowserRouter } from "react-router";
 import { Navigate, Route, Routes } from "react-router";
 import Accueil from "./Accueil"
 import Generation from "./generation";
-import Test from "./test"
-import Test2 from './test2';
 import { Toaster } from 'react-hot-toast'
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -14,8 +12,6 @@ createRoot(document.getElementById('root')).render(
     <Routes>
       <Route path="/" element={<Accueil />} />
       <Route path="/generation" element={<Generation />}/>
-      <Route path="/test" element={<Test />}/>
-      <Route path="/test2" element={<Test2 />}/>
     </Routes>
   </BrowserRouter>
   <Toaster position='top-center'/>
